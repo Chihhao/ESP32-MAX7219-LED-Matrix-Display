@@ -12,8 +12,8 @@
 #define PRINT(s, v) { Serial.print(F(s)); Serial.println(v); }
 #define PRINTS(s)   { Serial.println(F(s)); }
 
-const char* ssid     = "LedDisplay_Nory";
-const char* password = "LedDisplay_Nory";
+char ssid[32]        = "LedDisplay_Nory";
+char password[32]    = "LedDisplay_Nory";
 WiFiServer server(80);
 Bonezegei_DS3231 rtc(0x68);
 PS2Keyboard keyboard;
@@ -149,6 +149,12 @@ template <class T> int EEPROM_readAnything(int ee, T& value){
 
 void readBasicData(){
   EEPROM_readAnything(0, msg);
+  // 檢查 EEPROM 是否為空 (0xFF) 或無效，若是則寫入預設值
+  if ((uint8_t)msg[0][0] == 0xFF || msg[0][0] == 0) {
+      PRINTS("EEPROM uninitialized, writing defaults...");
+      initializeFirstTime();
+      EEPROM_readAnything(0, msg); // 重新讀取
+  }
   PRINT("msg[0]", msg[0]);
   PRINT("msg[1]", msg[1]);
   PRINT("msg[2]", msg[2]);
@@ -167,10 +173,23 @@ void setup(void){
     PRINTS("enable RTC");
     rtc.begin();
     rtc.setFormat(24);
+    if(rtc.getTime()) {
+        Serial.print(F("RTC Time: "));
+        Serial.print(rtc.getHour());
+        Serial.print(F(":"));
+        Serial.println(rtc.getMinute());
+    }
 
     PRINTS("enable KEYBOARD");
     keyboard.begin(PS2_DATA, PS2_CLOCK);
-    keyboard.clear();
+    unsigned long ms = millis();
+    while (keyboard.available() && (millis() - ms < 1000)) keyboard.read(); // 增加超時機制避免卡死
+
+    // Auto-generate SSID based on MAC address (Strategy 1)
+    uint8_t mac[6];
+    WiFi.macAddress(mac);
+    sprintf(ssid, "LedDisplay_%02X%02X", mac[4], mac[5]);
+    strcpy(password, ssid);
 
     PRINTS("Setting AP (Access Point)…");
     WiFi.softAP(ssid, password);
