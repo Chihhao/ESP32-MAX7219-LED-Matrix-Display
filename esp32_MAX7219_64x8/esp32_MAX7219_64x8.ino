@@ -9,12 +9,13 @@
 #include <PS2Keyboard.h>
 #include <TimeLib.h>
 #include "Font_Data.h"
+#include "WebPage.h"
 
 #define PRINT(s, v) { Serial.print(F(s)); Serial.println(v); }
 #define PRINTS(s)   { Serial.println(F(s)); }
 
-char ssid[32]        = "LedDisplay_Nory";
-char password[32]    = "LedDisplay_Nory";
+char ssid[32]        = "LedDisplay_SSID";
+char password[32]    = "LedDisplay_SSID";
 WiFiServer server(80);
 DNSServer dnsServer;
 Bonezegei_DS3231 rtc(0x68);
@@ -53,61 +54,7 @@ bool PAUSE_DISPLAY = false;
 bool TIME_MODE = false;
 unsigned long ulPauseTime=0;
 unsigned long ulLastShowClockTime=0;
-char dynamicWebPage[3000];
-
-const char WebResponse[] = "HTTP/1.1 200 OK\nContent-Type:text/html\n\n";
-const char WebPage[] =
-"<!DOCTYPE html>" \
-"<html>" \
-"<head>" \
-"<META HTTP-EQUIV=\"EXPIRES\" CONTENT=\"Mon, 22 Jul 2002 11:12:01 GMT\">" \
-"<META name=\"viewport\" content=\"width=device-width, initial-scale=1\">" \
-"<title>LED Matrix Text Setting</title>" \
-
-"<script>" \
-"strLine = \"\";" \
-
-"function SendText() {" \
-"  nocache = \"/&nocache=\" + Math.random() * 1000000;" \
-"  var request = new XMLHttpRequest();" \
-"  strLine = \"&MSG1=\" + document.getElementById(\"txt_form\").Message1.value + \"/&MSG2=\" + document.getElementById(\"txt_form\").Message2.value + \"/&MSG3=\" + document.getElementById(\"txt_form\").Message3.value+ \"/&TIME=\" + Date.now();" \
-"  request.open(\"GET\", strLine + nocache, false);" \
-"  request.send(null);" \
-"}" \
-
-"function ResetText() {" \
-"  nocache = \"/&nocache=\" + Math.random() * 1000000;" \
-"  var request = new XMLHttpRequest();" \
-"  strLine = \"&MSG1=MK350/&MSG2=NoryLee/&MSG3=Happy everyday!/&TIME=\" + Date.now();" \
-"  request.open(\"GET\", strLine + nocache, false);" \
-"  request.send(null);" \
-"}" \
-
-"function ResetTime() {" \
-"  nocache = \"/&nocache=\" + Math.random() * 1000000;" \
-"  var request = new XMLHttpRequest();" \
-"  strLine = \"&TIME=\" + Date.now();" \
-"  request.open(\"GET\", strLine + nocache, false);" \
-"  request.send(null);" \
-"}" \
-
-"</script>" \
-"</head>" \
-
-"<body>" \
-"<p><b>LED Matrix Text Setting</b></p>" \
-
-"<form id=\"txt_form\" name=\"frmText\">" \
-"<label>1: <input type=\"text\" name=\"Message1\" maxlength=\"100\" value=\"__MSG1__\" ></label><br><br>" \
-"<label>2: <input type=\"text\" name=\"Message2\" maxlength=\"100\" value=\"__MSG2__\" ></label><br><br>" \
-"<label>3: <input type=\"text\" name=\"Message3\" maxlength=\"100\" value=\"__MSG3__\" ></label><br><br>" \
-"</form>" \
-"<br>" \
-"<input type=\"button\" value=\"Send Text\" onclick=\"SendText()\">" \
-"<input type=\"button\" value=\"Reset Text\" onclick=\"ResetText()\">" \
-"<input type=\"button\" value=\"Reset Time\" onclick=\"ResetTime()\">" \
-"</body>" \
-"</html>";
+char dynamicWebPage[10240];
 
 char msg[3][200];
 uint8_t msgIdx = 0;
@@ -118,8 +65,8 @@ char szTimeH[12];
 
 void initializeFirstTime(){
   strcpy(msg[0], "MK330");
-  strcpy(msg[1], "B/E Maker Space");
-  strcpy(msg[2], "Chihhao Lai");
+  strcpy(msg[1], "ChihhaoLai");
+  strcpy(msg[2], "Happy everyday!");
   saveBasicData();
 }
 
@@ -364,7 +311,7 @@ void handleWiFi(void){
       break;
 
   case S_READ: // get the first line of data
-      PRINTS("S_READ");
+      // PRINTS("S_READ");
       while (client.available()){
           char c = client.read();
           if ((c == '\r') || (c == '\n')){
