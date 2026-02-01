@@ -1,5 +1,6 @@
 #include <WiFi.h>
 #include <WiFiServer.h>
+#include <DNSServer.h>
 #include <EEPROM.h>
 #include <MD_Parola.h>
 #include <MD_MAX72xx.h>
@@ -15,7 +16,9 @@
 char ssid[32]        = "LedDisplay_Nory";
 char password[32]    = "LedDisplay_Nory";
 WiFiServer server(80);
+DNSServer dnsServer;
 Bonezegei_DS3231 rtc(0x68);
+bool hasRTC = false;
 PS2Keyboard keyboard;
 
 #define HARDWARE_TYPE MD_MAX72XX::FC16_HW
@@ -174,6 +177,7 @@ void setup(void){
     rtc.begin();
     rtc.setFormat(24);
     if(rtc.getTime()) {
+        hasRTC = true;
         Serial.print(F("RTC Time: "));
         Serial.print(rtc.getHour());
         Serial.print(F(":"));
@@ -185,17 +189,21 @@ void setup(void){
     unsigned long ms = millis();
     while (keyboard.available() && (millis() - ms < 1000)) keyboard.read(); // 增加超時機制避免卡死
 
-    // Auto-generate SSID based on MAC address (Strategy 1)
-    uint8_t mac[6];
-    WiFi.macAddress(mac);
-    sprintf(ssid, "LedDisplay_%02X%02X", mac[4], mac[5]);
-    strcpy(password, ssid);
+    if (hasRTC) {
+        // Auto-generate SSID based on MAC address (Strategy 1)
+        WiFi.mode(WIFI_AP);
+        uint64_t chipid = ESP.getEfuseMac();
+        uint8_t *mac = (uint8_t*)&chipid;
+        sprintf(ssid, "LedDisplay_%02X%02X", mac[4], mac[5]);
+        strcpy(password, ssid);
 
-    PRINTS("Setting AP (Access Point)…");
-    WiFi.softAP(ssid, password);
-    IPAddress IP = WiFi.softAPIP();
-    PRINT("AP IP address:", IP);
-    server.begin();
+        PRINTS("Setting AP (Access Point)…");
+        WiFi.softAP(ssid, password);
+        IPAddress IP = WiFi.softAPIP();
+        PRINT("AP IP address:", IP);
+        server.begin();
+        dnsServer.start(53, "*", IP);
+    }
       
     P.begin(2);
     P.setZone(ZONE_LEFT, 5, 7);
@@ -210,12 +218,16 @@ void setup(void){
     P.setFont(ZONE_LEFT, numeric7Seg);
     P.setFont(ZONE_RIGHT, NULL);
     //P.setInvert(false);
-    P.displayZoneText(ZONE_LEFT, szTimeL, PA_CENTER, 0, 0, PA_PRINT, PA_NO_EFFECT);
-    
+    if (hasRTC) {
+        P.displayZoneText(ZONE_LEFT, szTimeL, PA_CENTER, 0, 0, PA_PRINT, PA_NO_EFFECT);
+    }
 }
 
 void loop(void){
-    handleWiFi();
+    if (hasRTC) {
+        dnsServer.processNextRequest();
+        handleWiFi();
+    }
     String lotString = checkBarCode();
     if(lotString.length() > 0){      
         char message[50];
@@ -241,9 +253,12 @@ void loop(void){
     if(PAUSE_DISPLAY){
         if(millis() - ulPauseTime >= BARCODE_DISPLAY_TIME * 1000){  
             PAUSE_DISPLAY = false;
+            if (!hasRTC) P.displayClear();
         }
+        P.displayAnimate(); // 確保在顯示條碼期間，畫面也能持續刷新
     }
     if(!PAUSE_DISPLAY){ 
+        if (!hasRTC) return;
         
         if(!isWorkTime()){ // Work Time: 0830-1730
             P.displayClear();
@@ -308,6 +323,7 @@ void loop(void){
 }
 
 bool isWorkTime(){
+  if (!hasRTC) return true;
   // Work Time: 0830-1730
   rtc.getTime();
   int _h = rtc.getHour();
@@ -505,7 +521,7 @@ String checkBarCode() {
       if (c == 10 || c == 13) {continue;}  // 忽略換行
       if (!isGraph(c)) {continue;}  // 忽略印不出來的字元      
       if (c >= 97 && c <= 122) {c -= 32;} //轉大寫
-      //Serial.print(c);
+      Serial.print((char)c); // [除錯用] 印出讀到的字元，確認是否有收到訊號
 
       barcodeString += String((char)c); 
     } 
@@ -529,6 +545,7 @@ String checkBarCode() {
 unsigned long ulLastGetTime=0;
 bool flasher = true;
 void getTime1(){  
+  if (!hasRTC) return;
   if (rtc.getTime()) {
     if(millis() - ulLastGetTime >= 1000){  
         ulLastGetTime = millis();  
