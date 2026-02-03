@@ -447,6 +447,7 @@ void updateWebPage(){
   strreplace(dynamicWebPage, "__MSG2__", msg[1]);
   strreplace(dynamicWebPage, "__MSG3__", msg[2]);  
   strreplace(dynamicWebPage, "__CHECKED__", displayEnable ? "checked" : "");
+  strreplace(dynamicWebPage, "__WORKTIME__", "08:30 ~ 17:30");
 }
 
 char *strreplace(char *s, const char *s1, const char *s2) {

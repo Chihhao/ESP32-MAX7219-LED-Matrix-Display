@@ -92,17 +92,20 @@ const char WebPage[] = R"rawliteral(
         <label style="margin:0; font-size:16px;">跑馬燈開關</label>
         <label class="switch"><input type="checkbox" onclick="toggleDisplay(this)" __CHECKED__><span class="slider"></span></label>
       </div>
-      <div class="form-group">
-        <label for="m1">顯示訊息 1</label>
-        <input type="text" id="m1" value="__MSG1__" maxlength="100" placeholder="輸入文字..." readonly onclick="this.removeAttribute('readonly');">
+      <div style="text-align: center; color: #666; font-size: 14px; margin-bottom: 20px;">
+        自動開關機時間: __WORKTIME__
       </div>
       <div class="form-group">
-        <label for="m2">顯示訊息 2</label>
-        <input type="text" id="m2" value="__MSG2__" maxlength="100" placeholder="輸入文字..." readonly onclick="this.removeAttribute('readonly');">
+        <label for="m1">輪播訊息 1</label>
+        <input type="text" id="m1" value="__MSG1__" maxlength="100" placeholder="輸入文字..." readonly ontouchstart="this.removeAttribute('readonly');" onclick="this.removeAttribute('readonly');">
       </div>
       <div class="form-group">
-        <label for="m3">顯示訊息 3</label>
-        <input type="text" id="m3" value="__MSG3__" maxlength="100" placeholder="輸入文字..." readonly onclick="this.removeAttribute('readonly');">
+        <label for="m2">輪播訊息 2</label>
+        <input type="text" id="m2" value="__MSG2__" maxlength="100" placeholder="輸入文字..." readonly ontouchstart="this.removeAttribute('readonly');" onclick="this.removeAttribute('readonly');">
+      </div>
+      <div class="form-group">
+        <label for="m3">輪播訊息 3</label>
+        <input type="text" id="m3" value="__MSG3__" maxlength="100" placeholder="輸入文字..." readonly ontouchstart="this.removeAttribute('readonly');" onclick="this.removeAttribute('readonly');">
       </div>
       <div class="btn-group">
         <input type="button" class="btn-primary" value="傳送文字" onclick="SendText()">
