@@ -26,6 +26,14 @@ const char WebPage[] = R"rawliteral(
   .btn-secondary { background-color: #6c757d; color: white; }
   .btn-secondary:hover { background-color: #5a6268; }
   #status { text-align: center; margin-top: 15px; color: #28a745; font-weight: 600; min-height: 24px; }
+  /* Switch CSS */
+  .control-group { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 0 5px; }
+  .switch { position: relative; display: inline-block; width: 50px; height: 28px; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+  .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+  input:checked + .slider { background-color: #28a745; }
+  input:checked + .slider:before { transform: translateX(22px); }
 </style>
 <script>
   function sendRequest(url) {
@@ -54,9 +62,9 @@ const char WebPage[] = R"rawliteral(
   }
 
   function ResetText() {
-    var params = "/&MSG1=" + encodeURIComponent("MK330") + 
-                 "/&MSG2=" + encodeURIComponent("ChihhaoLai") + 
-                 "/&MSG3=" + encodeURIComponent("Happy everyday!") + 
+    var params = "/&MSG1=" + encodeURIComponent("Welcome") + 
+                 "/&MSG2=" + encodeURIComponent("ESP32 LED") + 
+                 "/&MSG3=" + encodeURIComponent("Have a nice day") + 
                  "/&TIME=" + Date.now();
     sendRequest(params);
     showStatus("已重置預設文字！");
@@ -68,23 +76,33 @@ const char WebPage[] = R"rawliteral(
     sendRequest(params);
     showStatus("時間已校正！");
   }
+
+  function toggleDisplay(cb) {
+    sendRequest("/&DISP=" + (cb.checked ? "1" : "0"));
+    showStatus(cb.checked ? "顯示已開啟" : "顯示已關閉");
+  }
+
 </script>
 </head>
 <body>
   <div class="card">
     <h2>LED 字幕機控制</h2>
     <form>
+      <div class="control-group">
+        <label style="margin:0; font-size:16px;">跑馬燈開關</label>
+        <label class="switch"><input type="checkbox" onclick="toggleDisplay(this)" __CHECKED__><span class="slider"></span></label>
+      </div>
       <div class="form-group">
         <label for="m1">顯示訊息 1</label>
-        <input type="text" id="m1" value="__MSG1__" maxlength="100" placeholder="輸入文字...">
+        <input type="text" id="m1" value="__MSG1__" maxlength="100" placeholder="輸入文字..." readonly onclick="this.removeAttribute('readonly');">
       </div>
       <div class="form-group">
         <label for="m2">顯示訊息 2</label>
-        <input type="text" id="m2" value="__MSG2__" maxlength="100" placeholder="輸入文字...">
+        <input type="text" id="m2" value="__MSG2__" maxlength="100" placeholder="輸入文字..." readonly onclick="this.removeAttribute('readonly');">
       </div>
       <div class="form-group">
         <label for="m3">顯示訊息 3</label>
-        <input type="text" id="m3" value="__MSG3__" maxlength="100" placeholder="輸入文字...">
+        <input type="text" id="m3" value="__MSG3__" maxlength="100" placeholder="輸入文字..." readonly onclick="this.removeAttribute('readonly');">
       </div>
       <div class="btn-group">
         <input type="button" class="btn-primary" value="傳送文字" onclick="SendText()">

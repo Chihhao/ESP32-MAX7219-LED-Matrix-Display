@@ -55,6 +55,8 @@ char newMessage[MESG_SIZE];
 bool newMessageAvailable = false;
 bool PAUSE_DISPLAY = false;
 bool TIME_MODE = false;
+bool displayEnable = true;
+bool lastWorkTimeState = false;
 unsigned long ulPauseTime=0;
 unsigned long ulLastShowClockTime=0;
 char dynamicWebPage[10240];
@@ -67,9 +69,9 @@ char szTimeL[12];
 char szTimeH[12];
 
 void initializeFirstTime(){
-  strcpy(msg[0], "MK330");
-  strcpy(msg[1], "ChihhaoLai");
-  strcpy(msg[2], "Happy everyday!");
+  strcpy(msg[0], "Welcome!");
+  strcpy(msg[1], "ESP32 LED");
+  strcpy(msg[2], "Have a nice day!");
   saveBasicData();
 }
 
@@ -155,7 +157,7 @@ void setup(void){
         dnsServer.start(53, "*", IP);
 
         // --- OTA 設定開始 ---
-        ArduinoOTA.setHostname("LED-Matrix-Display"); // 設定在網路上的名稱
+        ArduinoOTA.setHostname(ssid); // 設定在網路上的名稱
         ArduinoOTA.setPassword("1201"); // 設定 OTA 更新密碼
 
         ArduinoOTA.onStart([]() {
@@ -200,6 +202,8 @@ void setup(void){
     if (hasRTC) {
         P.displayZoneText(ZONE_LEFT, szTimeL, PA_CENTER, 0, 0, PA_PRINT, PA_NO_EFFECT);
     }
+    lastWorkTimeState = isWorkTime();
+    displayEnable = lastWorkTimeState;
 }
 
 void loop(void){
@@ -239,8 +243,19 @@ void loop(void){
     }
     if(!PAUSE_DISPLAY){ 
         if (!hasRTC) return;
+
+        // 自動切換邏輯：偵測上班/下班時間的變化
+        bool currentWorkTime = isWorkTime();
+        if (currentWorkTime != lastWorkTimeState) {
+            if (currentWorkTime) {
+                displayEnable = true; // 上班時間到了，自動開啟
+            } else {
+                displayEnable = false; // 下班時間到了，自動關閉
+            }
+            lastWorkTimeState = currentWorkTime;
+        }
         
-        if(!isWorkTime()){ // Work Time: 0830-1730
+        if(!displayEnable){ // 使用 displayEnable 變數控制，允許手動覆蓋
             P.displayClear();
             delay(10);
             return;
@@ -380,6 +395,10 @@ void handleWiFi(void){
           PRINT("timeStamp: ", timeStamp);    
           setRtcTime(timeStamp);      
       }  
+      if(getText(szBuf, newMessage, MESG_SIZE, "/&DISP=")){
+          if(newMessage[0] == '1') displayEnable = true;
+          else displayEnable = false;
+      }
 
       if(needSave) { saveBasicData(); }
             
@@ -427,6 +446,7 @@ void updateWebPage(){
   strreplace(dynamicWebPage, "__MSG1__", msg[0]);
   strreplace(dynamicWebPage, "__MSG2__", msg[1]);
   strreplace(dynamicWebPage, "__MSG3__", msg[2]);  
+  strreplace(dynamicWebPage, "__CHECKED__", displayEnable ? "checked" : "");
 }
 
 char *strreplace(char *s, const char *s1, const char *s2) {
@@ -453,7 +473,16 @@ boolean getText(char *szMesg, char *psz, uint8_t len, char *msgName){
   if (pStart != NULL)
   {
     pStart += strlen(msgName);  // skip to start of data
-    pEnd = strstr(pStart, "/&");
+    
+    // 修正：支援多種結束符號，以相容 URL 參數 (&) 或 HTTP 結尾 (空格)
+    char *pEnd1 = strstr(pStart, "/&"); // 原有的自定義分隔符
+    char *pEnd2 = strstr(pStart, "&");  // 標準 URL 參數分隔符
+    char *pEnd3 = strstr(pStart, " ");  // HTTP 請求結束符
+    
+    pEnd = NULL;
+    if (pEnd1) pEnd = pEnd1;
+    if (pEnd2 && (!pEnd || pEnd2 < pEnd)) pEnd = pEnd2;
+    if (pEnd3 && (!pEnd || pEnd3 < pEnd)) pEnd = pEnd3;
 
     if (pEnd != NULL)
     {
