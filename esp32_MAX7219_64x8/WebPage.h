@@ -82,30 +82,33 @@ const char WebPage[] = R"rawliteral(
     showStatus(cb.checked ? "顯示已開啟" : "顯示已關閉");
   }
 
+  function toggleRotate(cb) {
+    sendRequest("/&ROT=" + (cb.checked ? "1" : "0"));
+    showStatus(cb.checked ? "已旋轉 180 度" : "已恢復正常方向");
+  }
+
 </script>
 </head>
 <body>
   <div class="card">
-    <h2>LED 字幕機控制</h2>
+    <h2>LED 字幕機</h2>
     <form>
       <div class="control-group">
-        <label style="margin:0; font-size:16px;">跑馬燈開關</label>
+        <label style="margin:0; font-size:16px;">開關 (__WORKTIME__)</label>
         <label class="switch"><input type="checkbox" onclick="toggleDisplay(this)" __CHECKED__><span class="slider"></span></label>
       </div>
-      <div style="text-align: center; color: #666; font-size: 14px; margin-bottom: 20px;">
-        自動開關機時間: __WORKTIME__
+      <div class="control-group">
+        <label style="margin:0; font-size:16px;">旋轉 180 度</label>
+        <label class="switch"><input type="checkbox" onclick="toggleRotate(this)" __ROT_CHECKED__><span class="slider"></span></label>
       </div>
       <div class="form-group">
-        <label for="m1">輪播訊息 1</label>
-        <input type="text" id="m1" value="__MSG1__" maxlength="100" placeholder="輸入文字..." readonly ontouchstart="this.removeAttribute('readonly');" onclick="this.removeAttribute('readonly');">
+        <input type="text" id="m1" value="__MSG1__" maxlength="100" placeholder="輸入輪播訊息 1" readonly ontouchstart="this.removeAttribute('readonly');" onclick="this.removeAttribute('readonly');">
       </div>
       <div class="form-group">
-        <label for="m2">輪播訊息 2</label>
-        <input type="text" id="m2" value="__MSG2__" maxlength="100" placeholder="輸入文字..." readonly ontouchstart="this.removeAttribute('readonly');" onclick="this.removeAttribute('readonly');">
+        <input type="text" id="m2" value="__MSG2__" maxlength="100" placeholder="輸入輪播訊息 2" readonly ontouchstart="this.removeAttribute('readonly');" onclick="this.removeAttribute('readonly');">
       </div>
       <div class="form-group">
-        <label for="m3">輪播訊息 3</label>
-        <input type="text" id="m3" value="__MSG3__" maxlength="100" placeholder="輸入文字..." readonly ontouchstart="this.removeAttribute('readonly');" onclick="this.removeAttribute('readonly');">
+        <input type="text" id="m3" value="__MSG3__" maxlength="100" placeholder="輸入輪播訊息 3" readonly ontouchstart="this.removeAttribute('readonly');" onclick="this.removeAttribute('readonly');">
       </div>
       <div class="btn-group">
         <input type="button" class="btn-primary" value="傳送文字" onclick="SendText()">

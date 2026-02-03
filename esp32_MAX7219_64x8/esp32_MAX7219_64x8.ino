@@ -56,6 +56,7 @@ bool newMessageAvailable = false;
 bool PAUSE_DISPLAY = false;
 bool TIME_MODE = false;
 bool displayEnable = true;
+bool rotate180 = false;
 bool lastWorkTimeState = false;
 unsigned long ulPauseTime=0;
 unsigned long ulLastShowClockTime=0;
@@ -72,11 +73,13 @@ void initializeFirstTime(){
   strcpy(msg[0], "Welcome!");
   strcpy(msg[1], "ESP32 LED");
   strcpy(msg[2], "Have a nice day!");
+  rotate180 = false;
   saveBasicData();
 }
 
 void saveBasicData(){
   EEPROM_writeAnything(0, msg);
+  EEPROM_writeAnything(600, rotate180);
   delay(2);
 }
 
@@ -104,6 +107,11 @@ template <class T> int EEPROM_readAnything(int ee, T& value){
 
 void readBasicData(){
   EEPROM_readAnything(0, msg);
+  
+  uint8_t rawRot = 0;
+  EEPROM_readAnything(600, rawRot);
+  rotate180 = (rawRot == 1); // 若 EEPROM 未初始化(0xFF)，則預設為 false
+
   // 檢查 EEPROM 是否為空 (0xFF) 或無效，若是則寫入預設值
   if ((uint8_t)msg[0][0] == 0xFF || msg[0][0] == 0) {
       PRINTS("EEPROM uninitialized, writing defaults...");
@@ -113,6 +121,27 @@ void readBasicData(){
   PRINT("msg[0]", msg[0]);
   PRINT("msg[1]", msg[1]);
   PRINT("msg[2]", msg[2]);
+}
+
+void applyRotation(){
+  P.displayClear();
+  if (rotate180) {
+    // 旋轉 180 度：視覺左側變為模組 0-2，視覺右側變為模組 3-7
+    P.setZone(ZONE_LEFT, 0, 2);
+    P.setZone(ZONE_RIGHT, 3, 7);
+  } else {
+    // 正常方向：視覺左側為模組 5-7，視覺右側為模組 0-4
+    P.setZone(ZONE_LEFT, 5, 7);
+    P.setZone(ZONE_RIGHT, 0, 4);
+  }
+  P.setFont(ZONE_LEFT, numeric7Seg);
+  P.setFont(ZONE_RIGHT, NULL);
+  P.setCharSpacing(1);
+
+  P.setZoneEffect(ZONE_LEFT, rotate180, PA_FLIP_UD);
+  P.setZoneEffect(ZONE_LEFT, rotate180, PA_FLIP_LR);
+  P.setZoneEffect(ZONE_RIGHT, rotate180, PA_FLIP_UD);
+  P.setZoneEffect(ZONE_RIGHT, rotate180, PA_FLIP_LR);
 }
 
 void setup(void){    
@@ -187,18 +216,8 @@ void setup(void){
     }
       
     P.begin(2);
-    P.setZone(ZONE_LEFT, 5, 7);
-    P.setZone(ZONE_RIGHT, 0, 4);
-//    P.setZone(ZONE_LEFT, 0, 2);
-//    P.setZone(ZONE_RIGHT, 3, 7);
-//    P.setZoneEffect(ZONE_LEFT, true, PA_FLIP_UD);
-//    P.setZoneEffect(ZONE_LEFT, true, PA_FLIP_LR);
-//    P.setZoneEffect(ZONE_RIGHT, true, PA_FLIP_UD);
-//    P.setZoneEffect(ZONE_RIGHT, true, PA_FLIP_LR);
-    P.setCharSpacing(1);
-    P.setFont(ZONE_LEFT, numeric7Seg);
-    P.setFont(ZONE_RIGHT, NULL);
-    //P.setInvert(false);
+    // Zone 的設定與字型現在統一由 applyRotation 處理
+    applyRotation();
     if (hasRTC) {
         P.displayZoneText(ZONE_LEFT, szTimeL, PA_CENTER, 0, 0, PA_PRINT, PA_NO_EFFECT);
     }
@@ -224,8 +243,8 @@ void loop(void){
         
         P.displayClear();
         P.setZone(ZONE_LEFT, 0, 7);
-        //P.setZoneEffect(ZONE_LEFT, true, PA_FLIP_UD);
-        //P.setZoneEffect(ZONE_LEFT, true, PA_FLIP_LR);
+        P.setZoneEffect(ZONE_LEFT, rotate180, PA_FLIP_UD);
+        P.setZoneEffect(ZONE_LEFT, rotate180, PA_FLIP_LR);
         P.setCharSpacing(1);
         P.setFont(ZONE_LEFT, NULL);
         P.displayZoneText(ZONE_LEFT, message, PA_CENTER, 0, 0, PA_NO_EFFECT, PA_NO_EFFECT);
@@ -238,6 +257,9 @@ void loop(void){
         if(millis() - ulPauseTime >= BARCODE_DISPLAY_TIME * 1000){  
             PAUSE_DISPLAY = false;
             if (!hasRTC) P.displayClear();
+            
+            // 離開條碼模式，恢復原本的 Zone 設定與旋轉狀態
+            applyRotation();
         }
         P.displayAnimate(); // 確保在顯示條碼期間，畫面也能持續刷新
     }
@@ -261,18 +283,6 @@ void loop(void){
             return;
         }
 
-        P.setZone(ZONE_LEFT, 5, 7);
-        P.setZone(ZONE_RIGHT, 0, 4);
-//        P.setZone(ZONE_LEFT, 0, 2);
-//        P.setZone(ZONE_RIGHT, 3, 7);
-//        P.setZoneEffect(ZONE_LEFT, true, PA_FLIP_UD);
-//        P.setZoneEffect(ZONE_LEFT, true, PA_FLIP_LR);
-//        P.setZoneEffect(ZONE_RIGHT, true, PA_FLIP_UD);
-//        P.setZoneEffect(ZONE_RIGHT, true, PA_FLIP_LR);
-        P.setCharSpacing(1);
-        P.setFont(ZONE_LEFT, numeric7Seg);
-        P.setFont(ZONE_RIGHT, NULL);
-        
         P.displayAnimate();
         
         P.displayZoneText(ZONE_LEFT, szTimeL, PA_CENTER, 0, 0, PA_PRINT, PA_NO_EFFECT);
@@ -399,6 +409,11 @@ void handleWiFi(void){
           if(newMessage[0] == '1') displayEnable = true;
           else displayEnable = false;
       }
+      if(getText(szBuf, newMessage, MESG_SIZE, "/&ROT=")){
+          rotate180 = (newMessage[0] == '1');
+          applyRotation();
+          needSave = true;
+      }
 
       if(needSave) { saveBasicData(); }
             
@@ -447,6 +462,7 @@ void updateWebPage(){
   strreplace(dynamicWebPage, "__MSG2__", msg[1]);
   strreplace(dynamicWebPage, "__MSG3__", msg[2]);  
   strreplace(dynamicWebPage, "__CHECKED__", displayEnable ? "checked" : "");
+  strreplace(dynamicWebPage, "__ROT_CHECKED__", rotate180 ? "checked" : "");
   strreplace(dynamicWebPage, "__WORKTIME__", "08:30 ~ 17:30");
 }
 
